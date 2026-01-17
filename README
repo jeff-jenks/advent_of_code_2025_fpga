@@ -1,0 +1,71 @@
+************** How-To Simulate **************
+1. Copy the north_pole_mainframe directory onto your device.
+2. Set current working directory to this location
+3. Compile with all .v and .vh files, using your favorite simulator (top module is tb.v for testbench, top.v for synthesis)
+4. Run sim and results will be output in the terminal
+
+**************** General ****************
+Assumptions: Input data contains no errors.
+             There are no data integrity errors possible internal and external of the FPGA.
+             External SPI Slave devices require one SPI clock cycle of Slave Select high before another byte can be read 
+             (in order to simplify simulation since specific SPI devices were not chosen).
+             Puzzle cores are only required to run once, report their output to their corresponding SPI slave, then never 
+             function again until Power On/Reset
+
+Design: Solves three puzzles, treating each puzzle input as coming from a dedicated SPI slave device external to the FPGA.
+        The FPGA is the SPI Master, and there are three slave chips which are simulated as part of the testbench.
+        The FPGA design's core blocks are the SPI Master, Control Unit, and a module for each puzzle.
+        SPI Clock Ratio = 4 (Ex. clk = 100 MHz, sclk = 25 MHz)
+
+Testbench: Each puzzle result is verified by comparing the design's result with the answer that was obtained via the
+           Advent of Code website, for my specific puzzle input data. (ie. the hard-coded expect-values and various
+           parameters/hard-coded values in design and testbench files will need to be changed if the user would
+           like to test other input files.)
+           The total simulation time should be about 23 ms.
+
+************* Day 3, Part 1 *************
+Assumptions: Input data contains no joltage of zero values.
+
+Design: As the input file data is read in from an SPI slave, the module uses the following algorithm to find the largest
+        joltage value per bank:
+        1. Initially read in first two joltage values and set as current max joltage.
+        2. On next joltage value read in (pseudocode):
+                if(current_joltage_tens_digit < current_joltage_ones_digit) {
+                        current_joltage_tens_digit = current_joltage_ones_digit
+                        current_joltage_ones_digit = new_joltage_in;
+                }
+                else if(current_joltage_ones_digit < new_joltage_in) {
+                        current_joltage_ones_digit = new_joltage_in
+                }
+        3. Repeat step 2 until bank end hit.
+        4. Add max joltage for bank to running sum of bank joltages
+        5. SPI slave sends End of Transmission character (0x04) after the final character of the input file 
+        to signal that the total joltage output should be sent from the master.
+
+************* Day 7, Part 1 *************
+Assumptions: The beam splitters are always increasing in width as they go down the length of the taychon manifold.
+             A beam splitter is never next to another beam splitter in a line.
+             The taychon manifold ends when beams are at the min and/or max x-coordinates.
+             The lines of the input file always alternate between line with beam splitters then line with no beam splitters.
+
+Design: The beams are kept in an x-coordinate vector that keeps track of the previous lines beam positions.
+        When a splitter is hit, this vector is updated with new beam coordinates and the split count is incremented.
+        Once the end of a line is hit, repeat above process by using previous line beam vector.
+        Once the max y-coordinate is hit, the total # of splits is reported to the SPI slave.
+
+************* Day 10, Part 1 *************
+Assumptions: Machines have no repeat buttons.
+             Machines always have at least one button combination that results in correct light output.
+
+Design: Reads in and stores the input file data, sent from an SPI slave. Contains a paramaterized # of cores
+        that each machine's data is dispatched to. Each core is capable of finding all possible button combinations
+        using simple binary counting, and the light output of a button combination is computed using XOR operations.
+        Each core is monitored to detect when a core is ready for new data and when a machine's least # of presses 
+        has been calculated. The sum of the least presses across all machines is reported to the SPI slave.
+
+Known Issues: The memory that stores the input data (buttons/lights) is currently inferred as registers. A future improvement 
+              will be to infer these as block RAM to improve resource utilization.
+              The CORE_COUNT parameter was originally intended to be used to increase the # of combo_solver_cores to gain 
+              performance via parallel computation. However, a single core can finish a computation faster than it takes to
+              read in the next machine. Therefore, increasing the core count does not further increase throughput, it only 
+              increases utilization. I've still kept the count at 2 in order to see the function of multi cores.
