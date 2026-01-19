@@ -67,5 +67,9 @@ Known Issues: The memory that stores the input data (buttons/lights) is currentl
               will be to infer these as block RAM to improve resource utilization.
               The CORE_COUNT parameter was originally intended to be used to increase the # of combo_solver_cores to gain 
               performance via parallel computation. However, a single core can finish a computation faster than it takes to
-              read in the next machine. Therefore, increasing the core count does not further increase throughput, it only 
-              increases utilization. I've still kept the count at 2 in order to see the function of multi cores.
+              read in the next machine (based on my specific input file). Therefore, increasing the core count does not
+              further increase throughput, it only increases utilization. I've still kept the count at 2 in order to see the
+              function of multi cores. For input files with a higher max button count per machine, and with back-to-back
+              machines with this higher max button count, multiple cores could increase performance. This is because with each
+              button, the # of possible button combinations increases by a factor of 2. While there are only a few more bytes to
+              read in for this extra button.
