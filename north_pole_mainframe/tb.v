@@ -4,7 +4,7 @@ module tb();
 
 parameter SLAVE_COUNT = 3;
 parameter SLAVE_REQUIRED_HIGH_CYCLES = 1;
-parameter SCLK_RATIO = 4;
+parameter SCLK_RATIO = 10;
 parameter TACHYON_MANIFOLD_WIDTH = 141;
 parameter SYNC_FLOPS = 2;
 parameter MAX_LIGHT_COUNT = 10;
@@ -22,7 +22,7 @@ wire spi_mosi;
 wire spi_sclk;
 wire [SLAVE_COUNT-1:0] spi_ss_out;
 
-always #5 clk = ~clk;
+always #2 clk = ~clk;
 
 always@(posedge clk) begin
     if(tb.top_inst0.factory_machine_initializer_inst0.tx_confirmed) begin

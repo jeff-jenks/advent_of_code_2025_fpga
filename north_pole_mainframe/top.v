@@ -1,7 +1,7 @@
 module top #(
     parameter SLAVE_COUNT = 3,
     parameter SLAVE_REQUIRED_HIGH_CYCLES = 1,
-    parameter SCLK_RATIO = 4,
+    parameter SCLK_RATIO = 10,
     parameter TACHYON_MANIFOLD_WIDTH = 141,
     parameter SYNC_FLOPS = 2,
     parameter MAX_LIGHT_COUNT = 10,
