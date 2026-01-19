@@ -1,3 +1,11 @@
+******************* ADVENT OF FPGA 2025 *******************
+Advent of FPGA is an FPGA design challenge run by Jane Street Capital, which coincides 
+with the annual Advent of Code challenge.
+Advent of FPGA asks participants to implement any Advent of Code puzzles that they choose
+in RTL code targetting FPGAs.
+This project implements three Advent of Code puzzles in a single FPGA design, written in Verilog.
+View puzzle descriptions here: adventofcode.com/2025
+
 ************** How-To Simulate **************
 1. Copy the north_pole_mainframe directory onto your device.
 2. Set current working directory to this location
