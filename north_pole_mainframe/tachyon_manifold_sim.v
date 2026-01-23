@@ -30,6 +30,10 @@ localparam MAX_BEAM_COUNT = TACHYON_MANIFOLD_WIDTH; // max # of beams that the s
 localparam MAX_SPLIT_COUNT = (((TACHYON_MANIFOLD_WIDTH)**2)-1) / 8; // max number of splits that could occur based on width
 localparam MAX_Y_COORD = (TACHYON_MANIFOLD_WIDTH - 1) / 2; // max y-coordinate based on width
 
+`ifdef SIM
+    reg op_done;
+`endif
+
 reg [$clog2(MAX_SPLIT_COUNT+1)-1:0] split_count; // counts # of splits
 reg [MAX_BEAM_COUNT-1:0] beam_coord; // stores x-coordinates of beams from last line, one-bit per x-pos
 wire final_line; // goes high when the max y-coordinate is reached
@@ -47,6 +51,9 @@ assign beam_final_split_count = split_count;
 
 always@(posedge clk) begin
     if(reset) begin
+        `ifdef SIM
+            op_done <= 1'b0;
+        `endif
         beam_coord <= 0;
         split_count <= 0;
         current_x <= 0;
@@ -56,7 +63,17 @@ always@(posedge clk) begin
         active_every_other <= 1'b1;
     end
     else begin
+        `ifdef SIM
+            if(op_done) begin
+                op_done <= 1'b0;
+            end
+        `endif
+
         if(beam_in_valid) begin
+            `ifdef SIM
+                op_done <= 1'b1;
+            `endif
+
             // Adjust current coordinates after each character
             if(beam_line_feed) begin
                 current_x <= 0;

@@ -22,7 +22,120 @@ wire spi_mosi;
 wire spi_sclk;
 wire [SLAVE_COUNT-1:0] spi_ss_out;
 
+time puzzle_time_start,puzzle_time_total;
+time process_time_start,process_time_total;
+reg test_start;
+reg [2:0] test_select;
+reg final_out_hit;
+reg [1:0] wait_for_ready;
+reg [CORE_COUNT-1:0] start_count;
+integer cycle_count [0:CORE_COUNT-1];
+integer min_cycles_per_op;
+real mean_cycles_per_op;
+integer max_cycles_per_op;
+
+integer i;
+
 always #2 clk = ~clk;
+
+always@(posedge clk) begin
+    if(test_start) begin
+        case(test_select)
+            3'b001: begin
+                if(tb.inst_tb_spi_slave_chip_0.test_complete) begin
+                    test_start <= 1'b0;
+                    test_select <= 3'b010;
+                    process_time_total = $time - process_time_start;
+                end
+                else if(tb.top_inst0.joltage_calc_unit_inst0.total_joltage_out_valid) begin
+                    final_out_hit <= 1'b1;
+                end
+                else if(tb.top_inst0.joltage_calc_unit_inst0.joltage_in_valid & ~final_out_hit) begin
+                    puzzle_time_start = $time;
+                end
+                else if(tb.top_inst0.joltage_calc_unit_inst0.op_done & ~final_out_hit) begin
+                    puzzle_time_total = puzzle_time_total + ($time - puzzle_time_start);
+                end
+            end
+            3'b010: begin
+                if(tb.inst_tb_spi_slave_chip_1.test_complete) begin
+                    test_start <= 1'b0;
+                    test_select <= 3'b100;
+                    process_time_total = $time - process_time_start;
+                end
+                else if(tb.top_inst0.tachyon_manifold_sim_inst0.beam_final_split_count_valid) begin
+                    final_out_hit <= 1'b1;
+                end
+                else if(tb.top_inst0.tachyon_manifold_sim_inst0.beam_in_valid & ~final_out_hit) begin
+                    puzzle_time_start = $time;
+                end
+                else if(tb.top_inst0.tachyon_manifold_sim_inst0.op_done & ~final_out_hit) begin
+                    puzzle_time_total = puzzle_time_total + ($time - puzzle_time_start);
+                end
+            end
+            3'b100: begin
+                if(tb.inst_tb_spi_slave_chip_2.test_complete) begin
+                    test_start <= 1'b0;
+                    test_select <= 3'b000;
+                    process_time_total = $time - process_time_start;
+                    mean_cycles_per_op = mean_cycles_per_op / MACHINE_COUNT;
+                end
+                else if(tb.top_inst0.factory_machine_initializer_inst0.mach_total_presses_valid) begin
+                    final_out_hit <= 1'b1;
+                end
+                else if(tb.top_inst0.factory_machine_initializer_inst0.mach_in_valid & tb.top_inst0.factory_machine_initializer_inst0.mach_buttons_end & ~final_out_hit & (wait_for_ready == 0)) begin
+                    puzzle_time_start = $time;
+                    wait_for_ready <= 2'b01;
+                end
+                else if((wait_for_ready < 2'd3) & (wait_for_ready != 0)) begin
+                    wait_for_ready <= wait_for_ready + 1'b1;
+                end
+                else if(&tb.top_inst0.factory_machine_initializer_inst0.core_ready & ~final_out_hit & (wait_for_ready == 2'd3)) begin
+                    puzzle_time_total = puzzle_time_total + ($time - puzzle_time_start);
+                    wait_for_ready <= 2'b0;
+                end
+
+                for(i=0;i<CORE_COUNT;i=i+1) begin
+                    if(start_count[i]) begin
+                        if(tb.top_inst0.factory_machine_initializer_inst0.core_ready[i]) begin
+                            start_count[i] <= 1'b0;
+                            mean_cycles_per_op = mean_cycles_per_op + (cycle_count[i] + 1);
+                            if(min_cycles_per_op > (cycle_count[i] + 1)) begin
+                                min_cycles_per_op = cycle_count[i] + 1;
+                            end
+                            if(max_cycles_per_op < (cycle_count[i] + 1)) begin
+                                max_cycles_per_op = cycle_count[i] + 1;
+                            end
+                            cycle_count[i] = 0;
+                        end
+                        else begin
+                            cycle_count[i] = cycle_count[i] + 1;
+                        end
+                    end
+                    else if(~tb.top_inst0.factory_machine_initializer_inst0.core_ready[i]) begin
+                        start_count[i] <= 1'b1;
+                    end
+                end
+            end
+        endcase
+    end
+    else if(test_select & ~spi_ss_out) begin
+        test_start <= 1'b1;
+        final_out_hit <= 1'b0;
+        puzzle_time_start = 0;
+        puzzle_time_total = 0;
+        process_time_start = $time;
+        process_time_total = 0;
+        start_count <= 0;
+        for(i=0;i<CORE_COUNT;i=i+1) begin
+            cycle_count[i] = 0;
+        end
+        min_cycles_per_op = 2147483647;
+        mean_cycles_per_op = 0;
+        max_cycles_per_op = 0;
+        wait_for_ready <= 2'b0;
+    end
+end
 
 always@(posedge clk) begin
     if(tb.top_inst0.factory_machine_initializer_inst0.tx_confirmed) begin
@@ -41,6 +154,9 @@ always@(negedge spi_sclk) begin
         else begin
             $display("Status: FAIL");
         end
+        $display("Cycles/Op: 1"); // Will never be greater than 1 cycle
+        $display("Puzzle Core Processing Time: %0t", puzzle_time_total);
+        $display("Total Processing Time: %0t", process_time_total);
     end
     if(tb.inst_tb_spi_slave_chip_1.test_complete) begin
         $display("********** Day 7, Part 1 **********");
@@ -52,6 +168,9 @@ always@(negedge spi_sclk) begin
         else begin
             $display("Status: FAIL");
         end
+        $display("Cycles/Op: 1"); // Will never be greater than 1 cycle
+        $display("Puzzle Core Processing Time: %0t", puzzle_time_total);
+        $display("Total Processing Time: %0t", process_time_total);
         $display("********** Day 10, Part 1 **********");
     end
     if(tb.inst_tb_spi_slave_chip_2.test_complete) begin
@@ -64,6 +183,11 @@ always@(negedge spi_sclk) begin
         else begin
             $display("Status: FAIL");
         end
+        $display("Min Cycles/Op: %0d", min_cycles_per_op);
+        $display("Mean Cycles/Op: %0.3f", mean_cycles_per_op);
+        $display("Max Cycles/Op: %0d", max_cycles_per_op);
+        $display("Puzzle Core Processing Time: %0t", puzzle_time_total);
+        $display("Total Processing Time: %0t", process_time_total);
         $finish();
     end
 end
@@ -71,6 +195,25 @@ end
 initial begin
     //$dumpfile("sim_waves.vcd");
     //$dumpvars(0, tb); // Dump all signals
+
+    $timeformat(-9, 0, " ns");
+
+    puzzle_time_start = 0;
+    puzzle_time_total = 0;
+    process_time_start = 0;
+    process_time_total = 0;
+    test_start = 0;
+    test_select = 3'b001;
+    final_out_hit = 0;
+    start_count = 0;
+    for(i=0;i<CORE_COUNT;i=i+1) begin
+        cycle_count[i] = 0;
+    end
+    min_cycles_per_op = 2147483647;
+    mean_cycles_per_op = 0;
+    max_cycles_per_op = 0;
+    wait_for_ready = 2'b0;
+
     clk = 0;
     reset = 1;
 

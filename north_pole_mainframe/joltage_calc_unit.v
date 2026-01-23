@@ -9,6 +9,10 @@ module joltage_calc_unit (
     output total_joltage_out_valid // signals that the total_joltage_out value is valid
 );
 
+`ifdef SIM
+    reg op_done;
+`endif
+
 wire [6:0] bank_joltage; // joltage value of bank
 wire bank_joltage_valid; // signals that the bank_joltage value is valid. Not currently used
 reg [3:0] joltage_in_reg [0:1]; // joltage_in_reg[1] stores the tens-place value, joltage_in_reg[0] stores the ones-place value
@@ -26,14 +30,25 @@ assign total_joltage_out_valid = joltage_in_valid & end_of_puzzle_tx;
 
 always@(posedge clk) begin
     if(reset) begin
+        `ifdef SIM
+            op_done <= 1'b0;
+        `endif
         for(i=0;i<2;i=i+1) begin
             joltage_in_reg[i] <= 0; // joltage values can only be 1 to 9, so 0 represents invalid joltage, ie. haven't received at least two joltage values yet
         end
         last_total_joltage_out <= 16'b0;
     end
     else begin
+        `ifdef SIM
+            if(op_done) begin
+                op_done <= 1'b0;
+            end
+        `endif
         // Calculate max bank joltage + keep running sum of max bank joltages
         if(joltage_in_valid & ~end_of_puzzle_tx) begin
+            `ifdef SIM
+                op_done <= 1'b1;
+            `endif
             if(bank_end) begin // last iteration (reset registers for next bank)
                 joltage_in_reg[1] <= 0;
                 joltage_in_reg[0] <= 0;
