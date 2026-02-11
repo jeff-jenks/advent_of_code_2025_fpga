@@ -110,3 +110,13 @@ Total Processing Time: 7877676 ns
 
 ## Known Issues
 The CORE_COUNT parameter was originally intended to be used to increase the # of combo_solver_cores to gain performance via parallel computation. However, a single core can finish a computation faster than it takes to read in the next machine (based on my specific input file). Therefore, increasing the core count does not further increase throughput, it only increases utilization. I've still kept the count at 2 in order to see the function of multi cores (see in waveforms). For input files with a higher max button count per machine, and with back-to-back machines with this higher max button count, multiple cores could increase performance. This is because with each button, the # of possible button combinations increases by a factor of 2. While there are only a few more bytes to read in for this extra button.
+
+# Synthesis / Place and Route
+Jane Street does not require Synthesis or Place and Route to be completed for project submission.  
+However, I am including Synthesis / Place and Route results to prove the performance and resource utilization of the design when implemented in an FPGA.  
+The target device is the AMD Kria KV260 Vision AI Starter Kit SOM, which contains a Zynq UltraScale+ MPSoC device.  
+The target clock frequency is 250 MHz, and all top-level parameters are kept the same as they are in the top.v file. (These parameters are also the same as what is used in the testbench)  
+No IO delay constraints are set on the IO pins, as specific external devices were not selected for this project.  
+Synth/PNR reports are available under the "build" directory.  
+The constraints file used for Synth/PNR is also included in the build directory.  
+As described in the reports, timing constraints are met and resource utilization is minimal.
